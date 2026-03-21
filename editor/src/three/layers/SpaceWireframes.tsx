@@ -1,18 +1,20 @@
 import { useMemo, useCallback } from 'react';
-import { Shape, ExtrudeGeometry, BufferGeometry } from 'three';
+import { Shape, ExtrudeGeometry, EdgesGeometry, BufferGeometry, LineBasicMaterial } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { CanonicalElement } from '../../model/elements.ts';
 import { useEditorState, useEditorDispatch } from '../../state/EditorContext.tsx';
 import { elementTo3DParams, type ExtrudeParams } from '../utils/elementTo3D.ts';
-import { useMaterial, useGhostMaterial } from '../hooks/useMaterials.ts';
 
-interface PolygonExtrusionsProps {
+interface SpaceWireframesProps {
   elements: CanonicalElement[];
-  tableName: string;
   levelElevation: number;
   levelElevations: Map<string, number>;
   ghost?: boolean;
 }
+
+const WIRE_MATERIAL = new LineBasicMaterial({ color: '#7eb8da', transparent: true, opacity: 0.6 });
+const WIRE_GHOST_MATERIAL = new LineBasicMaterial({ color: '#7eb8da', transparent: true, opacity: 0.15 });
+const WIRE_HIGHLIGHT_MATERIAL = new LineBasicMaterial({ color: '#0d99ff', opacity: 1 });
 
 function createExtrudeGeometry(params: ExtrudeParams): BufferGeometry | null {
   if (params.vertices.length < 3) return null;
@@ -35,25 +37,26 @@ function createExtrudeGeometry(params: ExtrudeParams): BufferGeometry | null {
   return geo;
 }
 
-interface PolygonMeshData {
+interface SpaceMeshData {
   id: string;
-  geometry: BufferGeometry;
+  edgeGeometry: EdgesGeometry;
 }
 
-export default function PolygonExtrusions({ elements, tableName, levelElevation, levelElevations, ghost }: PolygonExtrusionsProps) {
-  const normalMaterial = useMaterial(tableName);
-  const ghostMaterial = useGhostMaterial(tableName);
-  const material = ghost ? ghostMaterial : normalMaterial;
+export default function SpaceWireframes({ elements, levelElevation, levelElevations, ghost }: SpaceWireframesProps) {
   const dispatch = useEditorDispatch();
   const { selectedIds, hoveredId } = useEditorState();
 
   const meshes = useMemo(() => {
-    const result: PolygonMeshData[] = [];
+    const result: SpaceMeshData[] = [];
     for (const el of elements) {
       const params = elementTo3DParams(el, levelElevation, levelElevations);
       if (params?.kind === 'extrude') {
         const geo = createExtrudeGeometry(params);
-        if (geo) result.push({ id: el.id, geometry: geo });
+        if (geo) {
+          const edges = new EdgesGeometry(geo, 15);
+          geo.dispose();
+          result.push({ id: el.id, edgeGeometry: edges });
+        }
       }
     }
     return result;
@@ -75,16 +78,17 @@ export default function PolygonExtrusions({ elements, tableName, levelElevation,
 
   if (meshes.length === 0) return null;
 
+  const baseMaterial = ghost ? WIRE_GHOST_MATERIAL : WIRE_MATERIAL;
+
   return (
     <group>
-      {meshes.map(({ id, geometry }) => {
+      {meshes.map(({ id, edgeGeometry }) => {
         const isHighlighted = !ghost && (selectedIds.has(id) || hoveredId === id);
         return (
-          <mesh
+          <lineSegments
             key={id}
-            geometry={geometry}
-            material={material}
-            renderOrder={ghost ? -1 : 0}
+            geometry={edgeGeometry}
+            material={isHighlighted ? WIRE_HIGHLIGHT_MATERIAL : baseMaterial}
             {...(ghost
               ? { raycast: () => {} }
               : {
@@ -93,16 +97,7 @@ export default function PolygonExtrusions({ elements, tableName, levelElevation,
                   onPointerOut: handlePointerOut,
                 }
             )}
-          >
-            {isHighlighted && (
-              <meshStandardMaterial
-                attach="material"
-                color="#0d99ff"
-                transparent={material.transparent}
-                opacity={Math.max(material.opacity, 0.4)}
-              />
-            )}
-          </mesh>
+          />
         );
       })}
     </group>
