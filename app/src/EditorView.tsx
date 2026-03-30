@@ -12,10 +12,12 @@ import {
   TooltipProvider,
 } from 'bimdown-editor';
 import type { DataSource } from 'bimdown-editor';
-import { ArrowLeft, Download, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Download, FolderOpen, Sun, Moon } from 'lucide-react';
 import type { MemoryDataSource } from './dataSources/memory.ts';
 import { downloadProjectAsZip } from './dataSources/zip.ts';
 import { createFileSystemDataSource } from './dataSources/fileSystem.ts';
+import { setLanguage } from './i18n.ts';
+import { useTheme } from './theme.ts';
 
 interface EditorViewProps {
   ds: DataSource;
@@ -83,7 +85,8 @@ function EditorInner({ projectName }: { projectName: string }) {
 }
 
 export default function EditorView({ ds, projectName, memoryHandle, onBack, onDataSourceChange }: EditorViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const { resolved, toggle } = useTheme();
 
   const handleDownloadZip = useCallback(async () => {
     if (memoryHandle) {
@@ -107,47 +110,67 @@ export default function EditorView({ ds, projectName, memoryHandle, onBack, onDa
     }
   }, [memoryHandle, onDataSourceChange]);
 
+  const handleToggleLang = useCallback(() => {
+    const next = i18n.language === 'zh' ? 'en' : 'zh';
+    setLanguage(next);
+  }, [i18n.language]);
+
   return (
-    <div className="flex flex-col h-full w-full">
-      <div className="flex items-center gap-1 px-2 h-9 shrink-0 border-b border-border bg-[var(--bg-panel)]">
+    <div className="relative h-full w-full">
+      <TooltipProvider>
+        <DataSourceProvider ds={ds}>
+          <EditorProvider>
+            <EditorInner projectName={projectName} />
+          </EditorProvider>
+        </DataSourceProvider>
+      </TooltipProvider>
+
+      {/* Floating top-left: back + project name */}
+      <div className="glass-panel absolute top-3 left-3 z-40 flex items-center gap-2 rounded-xl border border-[var(--panel-border)] px-3 py-2 shadow-[var(--shadow-panel)]">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 px-2 py-1 rounded text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] text-[12px]"
+          className="flex items-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           title={t('Back')}
         >
-          <ArrowLeft size={14} />
+          <ArrowLeft size={16} />
         </button>
-        <span className="text-[12px] font-medium text-[var(--text-primary)] truncate">{projectName}</span>
-        <div className="flex-1" />
+        <div className="h-4 w-px bg-[var(--panel-border)]" />
+        <span className="text-[13px] font-semibold tracking-tight text-[var(--text-bright)]">{projectName}</span>
+      </div>
+
+      {/* Floating top-right: actions */}
+      <div className="absolute top-3 right-3 z-40 flex items-center gap-2">
         {memoryHandle && (
           <button
             onClick={handleDownloadZip}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] text-[11px]"
+            className="glass-panel flex h-9 items-center gap-1.5 rounded-xl border border-[var(--panel-border)] px-3 shadow-[var(--shadow-panel)] text-[var(--text-dim)] hover:text-[var(--text-bright)] text-[12px] transition-colors"
             title={t('Download ZIP')}
           >
-            <Download size={13} />
-            <span className="hidden sm:inline">ZIP</span>
+            <Download size={14} />
+            <span>ZIP</span>
           </button>
         )}
         {'showDirectoryPicker' in window && (
           <button
             onClick={handleSaveToFolder}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] text-[11px]"
+            className="glass-panel flex h-9 items-center gap-1.5 rounded-xl border border-[var(--panel-border)] px-3 shadow-[var(--shadow-panel)] text-[var(--text-dim)] hover:text-[var(--text-bright)] text-[12px] transition-colors"
             title={t('Save to Folder')}
           >
-            <FolderOpen size={13} />
-            <span className="hidden sm:inline">{t('Save to Folder')}</span>
+            <FolderOpen size={14} />
           </button>
         )}
-      </div>
-      <div className="flex-1 min-h-0">
-        <TooltipProvider>
-          <DataSourceProvider ds={ds}>
-            <EditorProvider>
-              <EditorInner projectName={projectName} />
-            </EditorProvider>
-          </DataSourceProvider>
-        </TooltipProvider>
+        <button
+          onClick={handleToggleLang}
+          className="glass-panel flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-[var(--panel-border)] shadow-[var(--shadow-panel)] text-[var(--text-dim)] hover:text-[var(--text-bright)] text-[11px] font-medium transition-colors"
+        >
+          {i18n.language === 'zh' ? 'EN' : '中'}
+        </button>
+        <button
+          onClick={toggle}
+          className="glass-panel flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-[var(--panel-border)] shadow-[var(--shadow-panel)] text-[var(--text-dim)] hover:text-[var(--text-bright)] transition-colors"
+        >
+          {resolved === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
       </div>
     </div>
   );

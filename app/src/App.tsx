@@ -8,6 +8,7 @@ import { createMemoryDataSource } from './dataSources/memory.ts';
 import type { MemoryDataSource } from './dataSources/memory.ts';
 import { createFileSystemDataSource } from './dataSources/fileSystem.ts';
 import { EMPTY_PROJECT_FILES } from './templates/emptyProject.ts';
+import { ThemeProvider } from './theme.ts';
 
 type AppState =
   | { view: 'landing' }
@@ -46,7 +47,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; onError?: () => voi
   }
 }
 
-export default function App() {
+function AppInner() {
   const [state, setState] = useState<AppState>({ view: 'landing' });
 
   const handleNewProject = useCallback(() => {
@@ -96,5 +97,13 @@ export default function App() {
         onDataSourceChange={handleDataSourceChange}
       />
     </ErrorBoundary>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
   );
 }
