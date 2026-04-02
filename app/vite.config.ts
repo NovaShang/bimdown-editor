@@ -83,17 +83,37 @@ export default defineConfig({
         })
       },
     },
+    {
+      name: 'watch-editor-src',
+      configureServer(server) {
+        // Explicitly add the editor source directory to chokidar's watch list
+        // so that changes to workspace package files trigger HMR.
+        server.watcher.add(path.resolve(__dirname, '../editor/src'));
+      },
+    },
     tailwindcss(),
     react(),
   ],
+  optimizeDeps: {
+    exclude: ['bimdown-editor'],
+  },
   server: {
-    port: 5175,
+    port: 5174,
+    watch: {
+      // FSEvents is broken for this directory — fall back to polling
+      usePolling: true,
+      interval: 500,
+    },
     fs: {
       allow: ['..'],
     },
   },
   resolve: {
     alias: {
+      'bimdown-editor/style.css': path.resolve(__dirname, '../editor/src/editor.css'),
+      'bimdown-editor/src/i18n/en.json': path.resolve(__dirname, '../editor/src/i18n/en.json'),
+      'bimdown-editor/src/i18n/zh.json': path.resolve(__dirname, '../editor/src/i18n/zh.json'),
+      'bimdown-editor': path.resolve(__dirname, '../editor/src/exports.ts'),
       '@': path.resolve(__dirname, './src'),
     },
   },
