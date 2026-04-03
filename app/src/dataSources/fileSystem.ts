@@ -57,9 +57,19 @@ export function createFileSystemDataSource(
       selfWrites.set(path, Date.now());
     },
 
-    resolveUrl(_path: string): string {
-      // FileSystem Access API doesn't provide direct URLs; callers should use fetchText + blob
-      return '';
+    async resolveUrl(path: string): Promise<string> {
+      try {
+        const parts = path.split('/');
+        let dir: FileSystemDirectoryHandle = dirHandle;
+        for (const part of parts.slice(0, -1)) {
+          dir = await dir.getDirectoryHandle(part);
+        }
+        const fileHandle = await dir.getFileHandle(parts.at(-1)!);
+        const file = await fileHandle.getFile();
+        return URL.createObjectURL(file);
+      } catch {
+        return '';
+      }
     },
 
     watchChanges(onFileChanged: (path: string) => void): () => void {
