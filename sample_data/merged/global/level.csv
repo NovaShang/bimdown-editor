@@ -1,7 +1,6 @@
-id,number,name,elevation
-lv-2,,Level 0,4.267
-lv-3,,Level 1,8.839
-lv-4,,Level 2,13.411
-lv-5,,Level 3,17.983
-lv-6,,Level 4,22.555
-lv-7,,Level 5,27.127
+﻿id,number,name,elevation
+lv-1,,01 - Entry Level,0
+lv-2,,02 - Floor,3.8
+lv-3,,03 - Floor,7.6
+lv-4,,Roof,11.4
+lv-5,,Parapet,12
