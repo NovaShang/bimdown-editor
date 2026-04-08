@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 export async function downloadProjectAsZip(
-  files: Map<string, string>,
+  files: Map<string, string | ArrayBuffer>,
   projectName = 'bimdown-project',
 ): Promise<void> {
   const zip = new JSZip();
@@ -13,20 +13,36 @@ export async function downloadProjectAsZip(
   saveAs(blob, `${projectName}.zip`);
 }
 
-export async function loadProjectFromZip(blob: Blob): Promise<Map<string, string>> {
+/** File extensions that must be read as binary (ArrayBuffer) instead of text. */
+const BINARY_EXTENSIONS = new Set(['.glb', '.gltf', '.obj', '.bin', '.png', '.jpg', '.jpeg', '.webp']);
+
+function isBinaryFile(path: string): boolean {
+  const ext = path.slice(path.lastIndexOf('.')).toLowerCase();
+  return BINARY_EXTENSIONS.has(ext);
+}
+
+export async function loadProjectFromZip(blob: Blob): Promise<Map<string, string | ArrayBuffer>> {
   const zip = await JSZip.loadAsync(blob);
-  const files = new Map<string, string>();
+  const files = new Map<string, string | ArrayBuffer>();
   const promises: Promise<void>[] = [];
 
   zip.forEach((relativePath, entry) => {
     if (entry.dir) return;
     // Skip macOS resource forks and hidden files
     if (relativePath.startsWith('__MACOSX/') || relativePath.includes('/.__')) return;
-    promises.push(
-      entry.async('string').then((content) => {
-        files.set(relativePath, content);
-      }),
-    );
+    if (isBinaryFile(relativePath)) {
+      promises.push(
+        entry.async('arraybuffer').then((content) => {
+          files.set(relativePath, content);
+        }),
+      );
+    } else {
+      promises.push(
+        entry.async('string').then((content) => {
+          files.set(relativePath, content);
+        }),
+      );
+    }
   });
 
   await Promise.all(promises);
